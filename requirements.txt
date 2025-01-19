@@ -1,0 +1,19 @@
+# Telegram bot için gerekli kütüphane
+python-telegram-bot>=20.8
+
+# HTTP istekleri için
+requests>=2.31.0
+
+# .env dosyasını okumak için
+python-dotenv>=1.0.0
+
+# Temel işlemler için
+pandas>=2.2.0
+numpy>=1.26.0
+
+# Web scraping için (OBS sistemine bağlanmak için gerekebilir)
+beautifulsoup4>=4.12.0
+lxml>=5.1.0
+
+# Güvenlik için
+cryptography>=42.0.0 
