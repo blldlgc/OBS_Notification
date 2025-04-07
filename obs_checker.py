@@ -48,12 +48,20 @@ def fetch_grades():
     if table is None:
         print("Not tablosu bulunamadı! OBSLogin ile giriş yapılıp tekrar deneniyor...")
         # get_obs_credentials fonksiyonunu çağır
-        new_cookie = get_obs_credentials()
-        if new_cookie:
-            print("\nGiriş başarılı! Yeni cookie ile tekrar deneniyor...")
+        if get_obs_credentials():
+            print("\nGiriş başarılı! .env dosyası güncellendi, tekrar deneniyor...")
+            
+            # Kısa bir bekleme ekle
+            print("Bekleniyor...")
+            #time.sleep(10)
+            
+            # Çevre değişkenlerini temizle ve yeniden yükle
+            os.environ.clear()
+            load_dotenv(override=True)
+            print(f"Yeniden yüklenen OBS_COOKIE: {os.getenv('OBS_COOKIE')}")
             
             # HEADERS'ı güncelle
-            HEADERS["cookie"] = new_cookie
+            HEADERS["cookie"] = os.getenv('OBS_COOKIE')
             print(f"Güncellenen HEADERS cookie: {HEADERS['cookie']}")
             
             # Önce index sayfasına git

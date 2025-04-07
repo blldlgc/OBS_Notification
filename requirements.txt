@@ -17,3 +17,7 @@ lxml>=5.1.0
 
 # Güvenlik için
 cryptography>=42.0.0 
+
+# Zamanlama için
+schedule>=1.2.1
+

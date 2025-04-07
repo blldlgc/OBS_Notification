@@ -187,53 +187,60 @@ class OBSLogin:
             return None
 
 def get_obs_credentials():
-    print("\nOBS giriş bilgileri alınıyor...")
-    username = os.getenv('OBS_USERNAME')
-    password = os.getenv('OBS_PASSWORD')
+    """
+    OBS bilgilerini alır ve giriş yapar
+    """
+    print("OBS giriş işlemi başlatılıyor...")
+    obs = OBSLogin()
+    credentials = obs.login()
     
-    if not username or not password:
-        print("OBS kullanıcı adı veya şifre bulunamadı!")
-        return None
-    
-    print("OBS giriş yapılıyor...")
-    session = requests.Session()
-    
-    # Login sayfasına git
-    login_url = "https://obsapp.mcbu.edu.tr/oibs/std/login.aspx"
-    response = session.get(login_url)
-    
-    # Login formunu doldur
-    login_data = {
-        "txtUserName": username,
-        "txtPassword": password,
-        "btnLogin": "Giriş"
-    }
-    
-    # Login isteği gönder
-    response = session.post(login_url, data=login_data)
-    
-    if "Hoşgeldiniz" in response.text:
-        print("Giriş başarılı!")
-        # Cookie'yi al
-        cookie = session.cookies.get_dict()
-        cookie_str = "; ".join([f"{k}={v}" for k, v in cookie.items()])
+    if credentials:
+        print("\nAlınan bilgiler:")
+        print(f"Session ID: {credentials['session_id']}")
+        print(f"Request Verification Token: {credentials['request_verification_token']}")
         
+        print("\n.env dosyası güncelleniyor...")
         # .env dosyasını güncelle
-        with open(".env", "r") as f:
-            lines = f.readlines()
-        
-        with open(".env", "w") as f:
-            for line in lines:
-                if line.startswith("OBS_COOKIE="):
-                    f.write(f"OBS_COOKIE={cookie_str}\n")
-                else:
-                    f.write(line)
-        
-        print("Cookie güncellendi!")
-        return cookie_str
+        try:
+            # Önce mevcut .env dosyasını oku ve logla
+            print("\nMevcut .env dosyası içeriği:")
+            with open('.env', 'r') as file:
+                current_content = file.read()
+                print(current_content)
+            
+            # .env dosyasını güncelle
+            with open('.env', 'r') as file:
+                lines = file.readlines()
+            
+            with open('.env', 'w') as file:
+                cookie_updated = False
+                for line in lines:
+                    if line.startswith('OBS_COOKIE='):
+                        file.write(f'OBS_COOKIE="{credentials["cookies"]}"\n')
+                        cookie_updated = True
+                        print(f"\nOBS_COOKIE güncellendi: {credentials['cookies']}")
+                    else:
+                        file.write(line)
+                
+                # Eğer OBS_COOKIE satırı yoksa, dosyanın sonuna ekle
+                if not cookie_updated:
+                    file.write(f'\nOBS_COOKIE="{credentials["cookies"]}"\n')
+                    print(f"\nOBS_COOKIE eklendi: {credentials['cookies']}")
+            
+            # Güncellenmiş .env dosyasını oku ve logla
+            print("\nGüncellenmiş .env dosyası içeriği:")
+            with open('.env', 'r') as file:
+                updated_content = file.read()
+                print(updated_content)
+            
+            print("\n.env dosyası başarıyla güncellendi!")
+            return True
+        except Exception as e:
+            print(f".env dosyası güncellenirken hata oluştu: {str(e)}")
+            return False
     else:
-        print("Giriş başarısız!")
-        return None
+        print("Bilgiler alınamadı!")
+        return False
 
 if __name__ == "__main__":
     get_obs_credentials() 
