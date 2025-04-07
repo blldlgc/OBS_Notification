@@ -6,6 +6,8 @@ import requests
 from bs4 import BeautifulSoup
 import os
 from dotenv import load_dotenv
+from obs_login import get_obs_credentials
+import time
 
 # .env dosyasını yükle
 load_dotenv()
@@ -31,6 +33,9 @@ HEADERS = {
 
 
 def fetch_grades():
+    print("\nNot listesi alınıyor...")
+    print(f"Mevcut OBS_COOKIE: {os.getenv('OBS_COOKIE')}")
+    
     response = requests.get(URL, headers=HEADERS)
 
     if response.status_code != 200:
@@ -41,10 +46,41 @@ def fetch_grades():
     table = soup.find("table", {"id": "grd_not_listesi"})
 
     if table is None:
-        print("Not tablosu bulunamadı! HTML yapısında bir değişiklik olmuş olabilir.")
-        print("Sayfa içeriği:")
-        print(response.text[:1000])  # Sayfanın ilk 1000 karakterini çıktı al
-        return None
+        print("Not tablosu bulunamadı! OBSLogin ile giriş yapılıp tekrar deneniyor...")
+        # get_obs_credentials fonksiyonunu çağır
+        new_cookie = get_obs_credentials()
+        if new_cookie:
+            print("\nGiriş başarılı! Yeni cookie ile tekrar deneniyor...")
+            
+            # HEADERS'ı güncelle
+            HEADERS["cookie"] = new_cookie
+            print(f"Güncellenen HEADERS cookie: {HEADERS['cookie']}")
+            
+            # Önce index sayfasına git
+            print("\nIndex sayfasına gidiliyor...")
+            index_url = "https://obsapp.mcbu.edu.tr/oibs/std/index.aspx?curOp=0"
+            response = requests.get(index_url, headers=HEADERS)
+            print(f"Index sayfası durum kodu: {response.status_code}")
+            
+            # Referer header'ını güncelle
+            HEADERS["referer"] = index_url
+            
+            # Sonra not listesi sayfasına git
+            print("\nNot listesi sayfasına gidiliyor...")
+            response = requests.get(URL, headers=HEADERS)
+            print(f"Not listesi sayfası durum kodu: {response.status_code}")
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            table = soup.find("table", {"id": "grd_not_listesi"})
+            
+            if table is None:
+                print("İkinci denemede de not tablosu bulunamadı! HTML yapısında bir değişiklik olmuş olabilir.")
+                print("Sayfa içeriği:")
+                print(response.text[:1000])  # Sayfanın ilk 1000 karakterini çıktı al
+                return None
+        else:
+            print("Giriş başarısız! Notlar alınamadı.")
+            return None
 
     rows = table.find_all("tr")[1:]  # İlk satır başlık olduğu için atlanır
 
