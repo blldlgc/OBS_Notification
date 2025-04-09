@@ -107,11 +107,22 @@ def fetch_grades():
     return pd.DataFrame(notlar)
 
 def prepare_message(dataframe):
-    message = "Yeni not girildi!\n\n"
-    message += "Ders Kodu | Ders Adı                     | Sınav Notları          | Ortalama | Harf Notu | Durum\n"
-    message += "-" * 80 + "\n"
+    """Telegram için markdown formatında mesaj oluşturur"""
+    message = "*🔔 YENİ NOT UYARISI!* 📝\n\n"
+    
     for _, row in dataframe.iterrows():
-        message += f"{row['Ders Kodu']: <10} | {row['Ders Adı']: <25} | {row['Sınav Notları']: <20} | {row['Ortalama']: <8} | {row['Harf Notu']: <8} | {row['Durum']}\n"
+        ders_kodu = row['Ders Kodu']
+        ders_adi = row['Ders Adı']
+        sinav_notlari = row['Sınav Notları'] if pd.notna(row['Sınav Notları']) and row['Sınav Notları'] else "Henüz not girilmedi"
+        ortalama = row['Ortalama'] if pd.notna(row['Ortalama']) and row['Ortalama'] else "—"
+        harf_notu = row['Harf Notu'] if pd.notna(row['Harf Notu']) and row['Harf Notu'] else "—"
+        durum = row['Durum'] if pd.notna(row['Durum']) else "Sonuçlandırılmadı"
+        
+        message += f"*{ders_kodu}* - {ders_adi}\n"
+        message += f"📝 Notlar: {sinav_notlari}\n"
+        message += f"📊 Ortalama: {ortalama} | 📑 Harf: {harf_notu} | ✅ Durum: {durum}\n\n"
+    
+    message += "_" + datetime.now().strftime('%d.%m.%Y %H:%M:%S') + "_"
     return message
 
 def check_for_updates(force_message=False):

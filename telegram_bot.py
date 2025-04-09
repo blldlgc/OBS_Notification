@@ -49,12 +49,22 @@ async def check_grades_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 # Güncel notları gösterme fonksiyonu
 async def show_grades(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """En son notları gösterir"""
+    # Callback query mi yoksa normal komut mu kontrol et
+    if update.callback_query:
+        query = update.callback_query
+        await query.answer()
+        message = query.message
+    else:
+        message = update.message
+    
+    # Kullanıcı kontrolü
     user_id = update.effective_user.id
     if str(user_id) != CHAT_ID:
-        await update.message.reply_text("Bu komutu kullanma yetkiniz yok.")
+        await message.reply_text("Bu komutu kullanma yetkiniz yok.")
         return
     
-    await update.message.reply_text("Notlar getiriliyor...")
+    # Bilgi mesajı göster
+    status_message = await message.reply_text("🔄 Notlar getiriliyor...")
     
     try:
         # Notları CSV'den oku veya doğrudan OBS'den getir
@@ -65,19 +75,39 @@ async def show_grades(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             grades_df = fetch_grades()
             source = "OBS sisteminden"
             if grades_df is None:
-                await update.message.reply_text("Notlar alınamadı. OBS erişimi başarısız.")
+                await status_message.edit_text("❌ Notlar alınamadı. OBS erişimi başarısız.")
                 return
         
-        message = f"Güncel notlarınız ({source}):\n\n"
-        message += "Ders Kodu | Ders Adı | Sınav Notları | Ortalama | Harf Notu | Durum\n"
-        message += "-" * 80 + "\n"
+        # Markdown formatında güzel bir mesaj hazırla
+        message_text = f"*📊 Güncel Notlarınız* ({source})\n\n"
         
         for _, row in grades_df.iterrows():
-            message += f"{row['Ders Kodu']} | {row['Ders Adı']} | {row['Sınav Notları']} | {row['Ortalama']} | {row['Harf Notu']} | {row['Durum']}\n"
+            ders_kodu = row['Ders Kodu']
+            ders_adi = row['Ders Adı']
+            sinav_notlari = row['Sınav Notları'] if pd.notna(row['Sınav Notları']) and row['Sınav Notları'] else "Henüz not girilmedi"
+            ortalama = row['Ortalama'] if pd.notna(row['Ortalama']) and row['Ortalama'] else "—"
+            harf_notu = row['Harf Notu'] if pd.notna(row['Harf Notu']) and row['Harf Notu'] else "—"
+            durum = row['Durum'] if pd.notna(row['Durum']) else "Sonuçlandırılmadı"
+            
+            message_text += f"*{ders_kodu}* - {ders_adi}\n"
+            message_text += f"📝 Notlar: {sinav_notlari}\n"
+            message_text += f"📊 Ortalama: {ortalama} | 📑 Harf: {harf_notu} | ✅ Durum: {durum}\n\n"
         
-        await update.message.reply_text(message)
+        message_text += "Son güncelleme: " + datetime.datetime.now().strftime('%d.%m.%Y %H:%M:%S')
+        
+        # Uzun mesajlar için bölme
+        if len(message_text) > 4000:
+            chunks = [message_text[i:i+4000] for i in range(0, len(message_text), 4000)]
+            for i, chunk in enumerate(chunks):
+                if i == 0:
+                    await status_message.edit_text(chunk, parse_mode='Markdown')
+                else:
+                    await message.reply_text(chunk, parse_mode='Markdown')
+        else:
+            await status_message.edit_text(message_text, parse_mode='Markdown')
+            
     except Exception as e:
-        await update.message.reply_text(f"Notlar alınırken hata oluştu: {str(e)}")
+        await status_message.edit_text(f"❌ Notlar alınırken hata oluştu: {str(e)}")
 
 # Durum bilgisi fonksiyonu
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
