@@ -114,7 +114,7 @@ def prepare_message(dataframe):
         message += f"{row['Ders Kodu']: <10} | {row['Ders Adı']: <25} | {row['Sınav Notları']: <20} | {row['Ortalama']: <8} | {row['Harf Notu']: <8} | {row['Durum']}\n"
     return message
 
-def check_for_updates():
+def check_for_updates(force_message=False):
     new_data = fetch_grades()
     if new_data is None:
         return
@@ -135,24 +135,31 @@ def check_for_updates():
         # Şu anki tarih ve saat
         current_time = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
         
-        # DataFrame'leri karşılaştır
-        if new_data_sorted.to_dict('records') == old_data_sorted.to_dict('records'):
-            print(f"Herhangi bir değişiklik yok. [Kontrol zamanı: {current_time}]")
-            return
-        
-        # Değişiklikleri bul
-        changes = []
-        for i, (new_row, old_row) in enumerate(zip(new_data_sorted.to_dict('records'), 
-                                                  old_data_sorted.to_dict('records'))):
-            if new_row != old_row:
-                changes.append(i)
-        
-        if changes:
-            changed_data = new_data_sorted.iloc[changes]
-            message = prepare_message(changed_data)
-            send_telegram_message(message)
-            new_data.to_csv("notlar.csv", index=False)
-            print(f"Yeni not girildi ve Telegram bildirimi gönderildi. [Kontrol zamanı: {current_time}]")
+        # Eğer zorla mesaj istendiyse veya değişiklik varsa
+        if force_message or new_data_sorted.to_dict('records') != old_data_sorted.to_dict('records'):
+            # Eğer zorla mesaj gönderilmesi istenmişse ancak değişiklik yoksa
+            if force_message and new_data_sorted.to_dict('records') == old_data_sorted.to_dict('records'):
+                message = "Yeni not yok, mevcut notlar:\n\n"
+                message += prepare_message(new_data_sorted)
+                send_telegram_message(message)
+                print(f"Manuel kontrol - değişiklik yok, mevcut notlar gönderildi. [Kontrol zamanı: {current_time}]")
+                return
+            
+            # Değişiklik varsa
+            if new_data_sorted.to_dict('records') != old_data_sorted.to_dict('records'):
+                # Değişiklikleri bul
+                changes = []
+                for i, (new_row, old_row) in enumerate(zip(new_data_sorted.to_dict('records'), 
+                                                        old_data_sorted.to_dict('records'))):
+                    if new_row != old_row:
+                        changes.append(i)
+                
+                changed_data = new_data_sorted.iloc[changes]
+                message = prepare_message(changed_data)
+                send_telegram_message(message)
+                new_data.to_csv("notlar.csv", index=False)
+                print(f"Yeni not girildi ve Telegram bildirimi gönderildi. [Kontrol zamanı: {current_time}]")
+            
         else:
             print(f"Herhangi bir değişiklik yok. [Kontrol zamanı: {current_time}]")
                 
